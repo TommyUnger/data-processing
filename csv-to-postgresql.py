@@ -16,6 +16,7 @@ class CsvToPostgres:
     def __init__(self, options):
         self.file_name = options.f
         self.table_name = options.t
+        self.delimiter = options.d.decode("string_escape")
 
     def create_sql(self):
         fw_txt = open(self.file_name + ".txt", "w")
@@ -41,9 +42,9 @@ class CsvToPostgres:
                             pass
                         if re.match(".*[^0-9].*", val):
                             self.table_cols[col]["string_count"] += 1
-                        if re.match("[$-]*[0-9,]+[.][0-9].*", val):
+                        if re.match("^[$-]*[0-9,]+[.][0-9].*$", val):
                             self.table_cols[col]["float_count"] += 1
-                        if re.match("[$-]*[0-9,]", val):
+                        if re.match("^[$-]*[0-9,]*$", val):
                             self.table_cols[col]["int_count"] += 1
                         if len(val) > self.table_cols[col]["max_len"]:
                             self.table_cols[col]["max_len"] = len(val)
@@ -67,19 +68,22 @@ class CsvToPostgres:
             col_data = self.table_cols[col]
             data_type = ""
             for dt in ["int", "float", "string", "datetime", "null"]:
-                col_data[dt + "_perc"] = (col_data[dt + "_count"] * 100.0 / col_data["not_null_count"])
-            if col_data["datetime_perc"] >= 50:
+                if col_data["not_null_count"] > 0:
+                    col_data[dt + "_perc"] = (col_data[dt + "_count"] * 100.0 / col_data["not_null_count"])
+                else:
+                    col_data[dt + "_perc"] = 0
+            if col_data["datetime_perc"] >= 99:
                 data_type = "TIMESTAMP"
-            elif col_data["float_perc"] >= 50:
+            elif col_data["float_perc"] >= 99:
                 data_type = "FLOAT"
-            elif col_data["int_perc"] >= 50:
+            elif col_data["int_perc"] >= 99:
                 data_type = "SMALLINT"
                 if col_data["max_len"] >= 10:
                     data_type = "BIGINT"
                 elif col_data["max_len"] >= 5:
                     data_type = "INT"
-            elif col_data["string_perc"] >= 50:
-                data_type = "VARCHAR(%s)" % (col_data["max_len"], )
+            elif col_data["string_perc"] >= 1:
+                data_type = "VARCHAR(%s)" % (col_data["max_len"]*2, )
                 if col_data["max_len"] == col_data["min_len"]:
                     data_type = "CHAR(%s)" % (col_data["min_len"], )
                 elif col_data["max_len"] >= 2000:
@@ -113,6 +117,7 @@ def main():
     parser = CustomArgParser()
     parser.add_argument('-f', default=None, help='File name to analyze and import', required=True)
     parser.add_argument('-t', default=None, help='Tablename for postgresql', required=True)
+    parser.add_argument('-d', default=",", help='Delimiter')
     args = parser.parse_args()
     csv2psql = CsvToPostgres(args)
     csv2psql.create_sql()
