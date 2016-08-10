@@ -11,16 +11,29 @@ class CsvToPostgres:
     quotechar = '"'
     file_name = None
     table_name = None
+    host_name = None
+    database_name = None
+    user_name = None
+    header_row_num = 1
     table_cols = OrderedDict()
 
     def __init__(self, options):
         self.file_name = options.f
         self.table_name = options.t
-        self.delimiter = options.d.decode("string_escape")
+        self.host_name = options.s
+        self.database_name = options.d
+        self.user_name = options.user_name
+        self.header_row_num = int(options.header_row)
+        self.delimiter = options.delim.decode("string_escape")
 
     def create_sql(self):
-        fw_txt = open(self.file_name + ".txt", "w")
+        data_file = re.sub("[^A-Za-z0-9]+", "_", self.file_name) + ".txt"
+        fw_txt = open(data_file, "w")
         with open(self.file_name, 'rb') as csvfile:
+            if self.header_row_num > 1:
+                print "Skipping headers"
+                for skip_num in range(1, self.header_row_num):
+                    next(csvfile, None)
             csvr = csv.DictReader(csvfile, delimiter=self.delimiter, quotechar=self.quotechar)
             for col in csvr.fieldnames:
                 self.table_cols[col] = {"int_count":0, "string_count":0, "min_len":999999999, "max_len":0, "null_count":0, "not_null_count":0, "datetime_count":0, "float_count":0, "total_count":0}
@@ -64,6 +77,7 @@ class CsvToPostgres:
             if col_num > 1:
                 sql += ", "
             col_name = re.sub("[^a-z0-9]+", " ", col.lower()).strip().replace(" ", "_")
+            col_name = re.sub("united_states", "us", col_name)
             sql += "\"%s\"" % (col_name, )
             col_data = self.table_cols[col]
             data_type = ""
@@ -100,8 +114,8 @@ class CsvToPostgres:
         fw.write(sql)
         fw.close()
         print "File created: %s" % (sql_file_name, )
-        print "psql -U postgres -h pm5-10g -d work -f %s" % (sql_file_name, )
-        print "cat %s | psql -U postgres -h pm5-10g -d work -c \"SET CLIENT_ENCODING='LATIN1'; COPY %s FROM STDIN NULL ''\"" % (self.file_name + ".txt", self.table_name)
+        print "psql -U %s -h %s -d %s -f %s" % (self.user_name, self.host_name, self.database_name, sql_file_name)
+        print "cat %s | psql -U %s -h %s -d %s -c \"SET CLIENT_ENCODING='LATIN1'; COPY %s FROM STDIN NULL ''\"" % (data_file, self.user_name, self.host_name, self.database_name, self.table_name)
 
 # Custom argument parser class to better handle argument errors
 class CustomArgParser(argparse.ArgumentParser):
@@ -117,7 +131,12 @@ def main():
     parser = CustomArgParser()
     parser.add_argument('-f', default=None, help='File name to analyze and import', required=True)
     parser.add_argument('-t', default=None, help='Tablename for postgresql', required=True)
-    parser.add_argument('-d', default=",", help='Delimiter')
+    parser.add_argument('-s', help='Database server host name', required=True)
+    parser.add_argument('-d', help='Database name', required=True)
+
+    parser.add_argument('--user_name', help='Database user name name', default="postgres")
+    parser.add_argument('--header_row', default=1, help='Header row number')
+    parser.add_argument('--delim', default=",", help='Delimiter')
     args = parser.parse_args()
     csv2psql = CsvToPostgres(args)
     csv2psql.create_sql()
