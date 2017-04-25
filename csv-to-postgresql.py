@@ -2,6 +2,7 @@ import csv
 import re
 import sys
 import argparse
+import random
 import dateutil.parser as date_parser
 from collections import OrderedDict
 
@@ -15,12 +16,14 @@ class CsvToPostgres:
     database_name = None
     user_name = None
     header_row_num = 1
+    sample_rate = 1
     table_cols = OrderedDict()
 
     def __init__(self, options):
         self.file_name = options.f
         self.table_name = options.t
         self.host_name = options.s
+        self.sample_rate = float(options.sample_rate) / 100
         self.database_name = options.d
         self.user_name = options.user_name
         self.header_row_num = int(options.header_row)
@@ -38,6 +41,10 @@ class CsvToPostgres:
             for col in csvr.fieldnames:
                 self.table_cols[col] = {"int_count":0, "string_count":0, "min_len":999999999, "max_len":0, "null_count":0, "not_null_count":0, "datetime_count":0, "float_count":0, "total_count":0}
             for row_num, row in enumerate(csvr):
+                if row_num % 10000 == 0 and row_num > 0:
+                    print row_num
+                if random.random() > self.sample_rate:
+                    continue
                 row_data = []
                 for col in csvr.fieldnames:
                     self.table_cols[col]["total_count"] += 1
@@ -48,7 +55,7 @@ class CsvToPostgres:
                         self.table_cols[col]["not_null_count"] += 1
                         val = re.sub("[\r\n\t]+", " ", row[col].strip()).strip()
                         try:
-                            if re.match("[/-]", val) is not None or len(val) >= 8:
+                            if re.search("[/-]", val) is not None and len(val) <= 28 and re.search("[0-9]{2}", val) is not None:
                                 date_parser.parse(val)
                                 self.table_cols[col]["datetime_count"] += 1
                         except:
@@ -66,8 +73,6 @@ class CsvToPostgres:
                         row_data.append(val)
 
                 fw_txt.write("\t".join(row_data) + "\n")
-                if row_num % 10000 == 0 and row_num > 0:
-                    print row_num
         fw_txt.close()
 
         sql = "DROP TABLE IF EXISTS " + self.table_name + ";\n"
@@ -99,12 +104,12 @@ class CsvToPostgres:
             elif col_data["string_perc"] >= 1:
                 data_type = "VARCHAR(%s)" % (col_data["max_len"]*8, )
                 if col_data["max_len"] == col_data["min_len"]:
-                    data_type = "CHAR(%s)" % (col_data["min_len"], )
+                    data_type = "VARCHAR(%s)" % (col_data["min_len"]*4, )
                 elif col_data["max_len"] >= 2000:
                     data_type = "TEXT"
             else:
                 data_type = "VARCHAR(128)"
-                print "Choked on: %s - %s" % (col, self.table_cols[col])
+                print "Fall through on: %s - %s" % (col, self.table_cols[col])
             col_num += 1
             sql += " " + data_type + "\n"
         sql += ");\n"
@@ -137,6 +142,7 @@ def main():
     parser.add_argument('--user_name', help='Database user name name', default="postgres")
     parser.add_argument('--header_row', default=1, help='Header row number')
     parser.add_argument('--delim', default=",", help='Delimiter')
+    parser.add_argument('--sample_rate', default="100", help='Sample rate (%)')
     args = parser.parse_args()
     csv2psql = CsvToPostgres(args)
     csv2psql.create_sql()
