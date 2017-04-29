@@ -12,6 +12,9 @@ def census_school_districts_to_postgresql():
         print("Requires setting or environment variable: $PGSQL_URL")
         return
 
+    os.system("psql %s -f schema/schools.school_district_import.sql" % (os.environ["PGSQL_URL"],))
+    os.system("psql %s -f schema/schools.school_district.sql" % (os.environ["PGSQL_URL"],))
+
     base_tiger_url = "https://www2.census.gov/geo/tiger/TIGER2016/%s/"
     district_types = ['ELSD', 'SCSD', 'UNSD']
     for district_type in district_types:
@@ -34,7 +37,7 @@ def census_school_districts_to_postgresql():
             file_names = unzip_file(data_path + zip_file_name)
 
             create_flags = '-d'
-            cmd = "shp2pgsql -D %s -s 4269 %s.shp geo.school_district_import > %s.sql" % (create_flags, data_path + short_name + "/" + short_name, data_path + short_name)
+            cmd = "shp2pgsql -D %s -s 4269 %s.shp schools.school_district_import > %s.sql" % (create_flags, data_path + short_name + "/" + short_name, data_path + short_name)
             print("Run shp2pgsql command")
             # print(cmd)
             os.system(cmd)
@@ -48,7 +51,7 @@ def census_school_districts_to_postgresql():
                         replace(replace(lograde, 'KG', '0'), 'PK', '-1')::SMALLINT, 
                         replace(replace(higrade, 'KG', '0'), 'PK', '-1')::SMALLINT, mtfcc, sdtyp, 
                         funcstat, aland, awater, intptlat, intptlon, geom""" % (district_type.lower())
-            cmd = "psql %s -c \"INSERT INTO geo.school_district SELECT %s FROM geo.school_district_import\"" % (os.environ["PGSQL_URL"], sql_cols)
+            cmd = "psql %s -c \"INSERT INTO schools.school_district SELECT %s FROM schools.school_district_import\"" % (os.environ["PGSQL_URL"], sql_cols)
             print("Run psql command")
             # print(cmd)
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=None, shell=True)
