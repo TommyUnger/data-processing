@@ -53,7 +53,7 @@ class CsvToPostgres:
                         row_data.append("")
                     else:
                         self.table_cols[col]["not_null_count"] += 1
-                        val = re.sub("[\r\n\t]+", " ", row[col].strip()).strip()
+                        val = re.sub("[\r\n\t\\\\]+", " ", row[col].strip()).strip()
                         try:
                             if re.search("[/-]", val) is not None and len(val) <= 28 and re.search("[0-9]{2}", val) is not None:
                                 date_parser.parse(val)
@@ -142,7 +142,7 @@ def main():
     parser.add_argument('--user_name', help='Database user name name', default="postgres")
     parser.add_argument('--header_row', default=1, help='Header row number')
     parser.add_argument('--delim', default=",", help='Delimiter')
-    parser.add_argument('--sample_rate', default="100", help='Sample rate (%)')
+    parser.add_argument('--sample_rate', default="100", help='Sample rate')
     args = parser.parse_args()
     csv2psql = CsvToPostgres(args)
     csv2psql.create_sql()

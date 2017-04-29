@@ -2,11 +2,15 @@ import requests
 import zipfile
 
 def download_file(url, name):
+    print("Downloading from: " + url)
     r = requests.get(url, stream=True)
     if r.status_code == 200:
+        print ("Saving to: " + name)
         with open(name, 'wb') as f:
             for chunk in r.iter_content(1024):
                 f.write(chunk)
+    else:
+        print r
 
 
 def unzip_file(file_name):
