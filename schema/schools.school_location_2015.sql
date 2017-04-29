@@ -20,5 +20,6 @@ SELECT survyear survey_year
 , necta 
 , metmic 
 , ST_GeomFromText('POINT('|| longcode || ' ' || latcode || ')', 4269)::geometry(point,  4269) geom_centroid
-FROM schools.school_location_import
+FROM schools.school_location_import_2015
 ;
+

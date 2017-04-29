@@ -45,10 +45,14 @@ def locations_2015():
     download_file("https://nces.ed.gov/ccd/Data/zip/EDGE_GEOIDS_201415_PUBLIC_SCHOOL_csv.zip", "schools-location.zip")
     file_names = unzip_file("schools-location.zip")
     file_name = file_names[0]
-    cmd = "python csv-to-postgresql.py -f %s -t schools.school_location_import -s datav.us -d dataviz --user_name postgres" % (file_name, )
-    os.system(cmd)
+
+    run_cmd("psql %s -f schema/schools.school_location_import_2015.sql" % (os.environ["PGSQL_URL"], ))
+    run_cmd("cat %s | psql %s -c \"SET CLIENT_ENCODING='LATIN1'; COPY schools.school_location_import_2015 FROM STDIN CSV HEADER NULL ''\"" % (file_name, os.environ["PGSQL_URL"]))
+    run_cmd("psql %s -f schema/schools.school_location_2015.sql" % (os.environ["PGSQL_URL"],))
+    run_cmd("rm -rf schools-location*")
+    run_cmd("psql %s -c \"DROP TABLE schools.school_location_import_2015\"" % (os.environ["PGSQL_URL"],))
 
 
-
-# schools_2015()
+schools_2015()
 schools_2016()
+locations_2015()
