@@ -20,7 +20,7 @@ def schools_2015():
     run_cmd("cat %s | psql %s -c \"SET CLIENT_ENCODING='LATIN1'; COPY schools.school_directory_import_2015 FROM STDIN CSV HEADER DELIMITER E'\\t' NULL ''\"" % (file_name, os.environ["PGSQL_URL"]))
     run_cmd("psql %s -f schema/schools.school_directory_2015.sql" % (os.environ["PGSQL_URL"],))
     run_cmd("rm -rf schools-directory*")
-    run_cmd("psql %s -c \"schools.school_directory_import\"" % (os.environ["PGSQL_URL"],))
+    run_cmd("psql %s -c \"DROP TABLE schools.school_directory_import_2015\"" % (os.environ["PGSQL_URL"],))
 
 
 def schools_2016():
@@ -38,7 +38,7 @@ def schools_2016():
     run_cmd("cat %s.csv | psql %s -c \"SET CLIENT_ENCODING='LATIN1'; COPY schools.school_directory_import_2016 FROM STDIN CSV HEADER NULL ''\"" % (file_name, os.environ["PGSQL_URL"]))
     run_cmd("psql %s -f schema/schools.school_directory_2016.sql" % (os.environ["PGSQL_URL"],))
     run_cmd("rm -rf schools-directory*")
-    run_cmd("psql %s -c \"schools.school_directory_import_2016\"" % (os.environ["PGSQL_URL"],))
+    run_cmd("psql %s -c \"DROP TABLE schools.school_directory_import_2016\"" % (os.environ["PGSQL_URL"],))
 
 
 def locations_2015():
