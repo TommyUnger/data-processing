@@ -10,7 +10,7 @@ def download_file(url, name):
             for chunk in r.iter_content(1024):
                 f.write(chunk)
     else:
-        print r
+        print(r)
 
 
 def unzip_file(file_name):

@@ -8,7 +8,7 @@ from utils import download_file, unzip_file
 # https://nces.ed.gov/ccd/pubschuniv.asp
 
 def run_cmd(cmd):
-    print cmd
+    print(cmd)
     os.system(cmd)
 
 
@@ -53,6 +53,20 @@ def locations_2015():
     run_cmd("psql %s -c \"DROP TABLE schools.school_location_import_2015\"" % (os.environ["PGSQL_URL"],))
 
 
+def schools_membership_2015():
+    download_file("https://nces.ed.gov/ccd/Data/zip/ccd_sch_052_1415_w_0216161a_txt.zip", "schools-membership.zip")
+    file_names = unzip_file("schools-membership.zip")
+    file_name = file_names[0]
+
+    run_cmd("psql %s -f schema/schools.school_membership_2015.sql" % (os.environ["PGSQL_URL"], ))
+    run_cmd("cat %s | psql %s -c \"SET CLIENT_ENCODING='LATIN1'; COPY schools.school_membership_2015 FROM STDIN CSV HEADER DELIMITER E'\\t' NULL ''\"" % (file_name, os.environ["PGSQL_URL"]))
+    run_cmd("rm -rf schools-membership*")
+
+
 schools_2015()
 schools_2016()
 locations_2015()
+schools_membership_2015()
+
+
+
